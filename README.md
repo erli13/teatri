@@ -1,14 +1,15 @@
 # Teatri - Theatre POS & Booking System
 
-Sistem i plotë për menaxhimin e biletave dhe rezervimeve për teatro, i lokalizuar për Shqipërinë (monedha ALL, qyteti Elbasan).
+Sistem i plote per menaxhimin e biletave dhe rezervimeve per teatro, i lokalizuar per Shqiperine (monedha ALL, qyteti Elbasan).
 
 ## Struktura
 
 ```
 theatreSystem/
-├── web-app/        # Next.js 16 — admin panel, agjentë shitjesh, booking publik
-├── scanner-app/    # React Native / Expo 54 — skanim biletash me QR
-└── database/       # Docker Compose — PostgreSQL 16
+├── web-app/          # Next.js 16 — admin panel, agjente shitjesh, booking publik
+├── scanner-app/      # React Native / Expo 54 — skanim biletash me QR
+├── docker-compose.yml  # Ngre gjithe sistemin (postgres + web-app)
+└── .github/workflows/  # CI/CD me GitHub Actions (self-hosted runner)
 ```
 
 ## Tech Stack
@@ -20,50 +21,79 @@ theatreSystem/
 | Database      | PostgreSQL 16, Prisma 7              |
 | Auth          | JWT + Cookie (jose, bcryptjs)        |
 | Mobile        | Expo 54, React Native 0.81           |
-| Infra         | Docker Compose                       |
+| Infra         | Docker Compose, GitHub Actions       |
 
-## Modelet e të dhënave
+## Modelet e te dhenave
 
 - **User** — admin, staff, customer (role-based access)
-- **Venue** — salla teatrale me zona vendesh (SeatingZone → Seat)
-- **Show** — shfaqje me data, çmime për zonë (ShowPrice)
-- **Ticket** — biletë me status (RESERVED → PAID → USED), QR code unik
+- **Venue** — salla teatrale me zona vendesh (SeatingZone -> Seat)
+- **Show** — shfaqje me data, cmime per zone (ShowPrice)
+- **Ticket** — bilete me status (RESERVED -> PAID -> USED), QR code unik
 
-## Instalimi
+## Deploy me Docker (Production)
 
-### 1. Database
+### 1. Konfiguro secrets ne GitHub
+
+Shko te **Settings > Secrets and variables > Actions** dhe shto:
+
+| Secret              | Pershkrimi                      |
+|---------------------|---------------------------------|
+| `POSTGRES_USER`     | Username per PostgreSQL         |
+| `POSTGRES_PASSWORD` | Password per PostgreSQL         |
+| `POSTGRES_DB`       | Emri i databazes                |
+| `WEB_PORT`          | Porti (default: 3000)           |
+| `SESSION_SECRET`    | 32+ byte random secret per JWT  |
+| `SCANNER_API_KEY`   | API key per scanner app         |
+| `MASTER_BYPASS_CODE`| Kodi bypass per testim          |
+
+### 2. Deploy automatik
+
+Cdo push ne `main` ben automatikisht:
+1. Checkout kodin ne self-hosted runner (AWS VM)
+2. Krijon `.env` nga GitHub Secrets
+3. Build Docker images
+4. Ngre kontejnerat me `docker compose up -d`
+
+### 3. Deploy manual
 
 ```bash
-cd database
+cp .env.example .env
+# Edito .env me vlerat e produksionit
+
+docker compose build
 docker compose up -d
 ```
 
-### 2. Web App
+## Zhvillim Lokal
+
+### Web App
 
 ```bash
 cd web-app
 npm install
 ```
 
-Krijo `.env` me:
+Krijo `web-app/.env`:
 ```
 DATABASE_URL="postgresql://admin:password123@localhost:5432/theatre_db"
-JWT_SECRET="nje-sekret-i-forte"
-SCANNER_API_KEY="nje-celes-api"
+SESSION_SECRET="dev-only-secret-replace-me-with-32-bytes-of-real-random-data"
+SCANNER_API_KEY="dev-scanner-key-replace-me"
+MASTER_BYPASS_CODE="MASTER-BYPASS-CHANGE-ME-9f3c1a7e8b2d4c6f"
 ```
 
-Migro dhe mbill databazën:
 ```bash
+# Ngri postgres lokalisht
+docker compose up postgres -d
+
+# Migro dhe mbill databazen
 npx prisma migrate deploy
 npx prisma db seed
-```
 
-Nise serverin:
-```bash
+# Nise dev serverin
 npm run dev -- --webpack
 ```
 
-### 3. Scanner App (mobile)
+### Scanner App (mobile)
 
 ```bash
 cd scanner-app
@@ -75,7 +105,7 @@ npm start
 
 | Rol      | Akses                                                    |
 |----------|----------------------------------------------------------|
-| ADMIN    | `/admin` — menaxhon salla, shfaqje, çmime, agjentë      |
+| ADMIN    | `/admin` — menaxhon salla, shfaqje, cmime, agjente      |
 | STAFF    | `/agent` — shet bileta, printon QR                       |
 | CUSTOMER | Faqja publike — shikon shfaqje                           |
 

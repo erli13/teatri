@@ -1,0 +1,42 @@
+version: "3.8"
+
+services:
+  postgres:
+    image: postgres:16
+    container_name: theatre_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-admin}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-password123}
+      POSTGRES_DB: ${POSTGRES_DB:-theatre_db}
+    ports:
+      - "5432:5432"
+    volumes:
+      - theatre_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-admin} -d ${POSTGRES_DB:-theatre_db}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  web-app:
+    build:
+      context: ./web-app
+      args:
+        DATABASE_URL: postgresql://${POSTGRES_USER:-admin}:${POSTGRES_PASSWORD:-password123}@postgres:5432/${POSTGRES_DB:-theatre_db}?schema=public
+    container_name: theatre_web
+    restart: unless-stopped
+    ports:
+      - "${WEB_PORT:-3000}:3000"
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-admin}:${POSTGRES_PASSWORD:-password123}@postgres:5432/${POSTGRES_DB:-theatre_db}?schema=public
+      SESSION_SECRET: ${SESSION_SECRET:-dev-only-secret-replace-me-with-32-bytes-of-real-random-data}
+      SCANNER_API_KEY: ${SCANNER_API_KEY:-dev-scanner-key-replace-me}
+      MASTER_BYPASS_CODE: ${MASTER_BYPASS_CODE:-MASTER-BYPASS-CHANGE-ME-9f3c1a7e8b2d4c6f}
+      NODE_ENV: production
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+volumes:
+  theatre_pgdata:

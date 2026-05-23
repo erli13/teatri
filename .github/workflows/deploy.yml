@@ -1,0 +1,40 @@
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  deploy:
+    runs-on: self-hosted
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Create .env from secrets
+        run: |
+          cat > .env << EOF
+          POSTGRES_USER=${{ secrets.POSTGRES_USER }}
+          POSTGRES_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}
+          POSTGRES_DB=${{ secrets.POSTGRES_DB }}
+          WEB_PORT=${{ secrets.WEB_PORT }}
+          SESSION_SECRET=${{ secrets.SESSION_SECRET }}
+          SCANNER_API_KEY=${{ secrets.SCANNER_API_KEY }}
+          MASTER_BYPASS_CODE=${{ secrets.MASTER_BYPASS_CODE }}
+          EOF
+
+      - name: Build and deploy
+        run: |
+          docker compose down
+          docker compose build --no-cache
+          docker compose up -d
+
+      - name: Wait for healthy
+        run: |
+          echo "Waiting for services..."
+          sleep 10
+          docker compose ps
+
+      - name: Cleanup old images
+        run: docker image prune -f
