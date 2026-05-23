@@ -7,7 +7,7 @@ type Seat = {
   id: string;
   rowLabel: string;
   seatNumber: number;
-  ticketStatus: "RESERVED" | "PAID" | "USED" | null;
+  ticketStatus: "RESERVED" | "PAID" | "CANCELLED" | "USED" | null;
   ticketId: string | null;
   releasable: boolean;
 };
