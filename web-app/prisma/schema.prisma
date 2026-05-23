@@ -1,0 +1,124 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client"
+  output   = "../app/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum Role {
+  ADMIN
+  STAFF
+  CUSTOMER
+}
+
+enum TicketStatus {
+  RESERVED
+  PAID
+  CANCELLED
+  USED
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String?
+  password  String
+  role      Role     @default(CUSTOMER)
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tickets Ticket[]
+}
+
+model Venue {
+  id        String   @id @default(cuid())
+  name      String
+  address   String?
+  city      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  seatingZones SeatingZone[]
+  shows        Show[]
+}
+
+model SeatingZone {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  venueId     String
+  venue       Venue    @relation(fields: [venueId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  seats      Seat[]
+  showPrices ShowPrice[]
+}
+
+model Seat {
+  id         String      @id @default(cuid())
+  rowLabel   String
+  seatNumber Int
+  zoneId     String
+  zone       SeatingZone @relation(fields: [zoneId], references: [id], onDelete: Cascade)
+  createdAt  DateTime    @default(now())
+  updatedAt  DateTime    @updatedAt
+
+  tickets Ticket[]
+
+  @@unique([zoneId, rowLabel, seatNumber])
+}
+
+model Show {
+  id          String    @id @default(cuid())
+  title       String
+  description String?
+  startsAt    DateTime
+  endsAt      DateTime?
+  venueId     String
+  venue       Venue     @relation(fields: [venueId], references: [id])
+  published   Boolean   @default(false)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  prices  ShowPrice[]
+  tickets Ticket[]
+}
+
+model ShowPrice {
+  id        String      @id @default(cuid())
+  showId    String
+  show      Show        @relation(fields: [showId], references: [id], onDelete: Cascade)
+  zoneId    String
+  zone      SeatingZone @relation(fields: [zoneId], references: [id], onDelete: Cascade)
+  price     Decimal     @db.Decimal(10, 2)
+  currency  String      @default("ALL")
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+
+  @@unique([showId, zoneId])
+}
+
+model Ticket {
+  id        String       @id @default(cuid())
+  showId    String
+  show      Show         @relation(fields: [showId], references: [id])
+  seatId    String
+  seat      Seat         @relation(fields: [seatId], references: [id])
+  userId    String?
+  user      User?        @relation(fields: [userId], references: [id])
+  price     Decimal      @db.Decimal(10, 2)
+  currency  String       @default("ALL")
+  status    TicketStatus @default(RESERVED)
+  code      String       @unique @default(cuid())
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+
+  @@unique([showId, seatId])
+}
